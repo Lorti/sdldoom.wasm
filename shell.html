@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>SDLDoom 1.10</title>
+    <style>
+      .center {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      .textCenter {
+        text-align: center;
+      }
+
+      textarea {
+        width: 80%;
+        height: 200px;
+        font-family: monospace;
+      }
+
+      canvas {
+          border: none;
+          background: black;
+          image-rendering: pixelated;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="center textCenter">
+        <div id="status">Downloading ...</div>
+        <progress id="progress" value="0" max="100" hidden></progress>
+    </div>
+    <canvas id="canvas" class="center" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+    <div class="center textCenter">
+        <button onclick="Module.requestFullscreen(true, false)">Fullscreen</button>
+    </div>
+    <textarea id="output" class="center" rows="8"></textarea>
+    <script>
+      const statusElement = document.getElementById('status');
+      const progressElement = document.getElementById('progress');
+
+      var Module = {
+        preRun: [function () { SDL.defaults.copyOnLock = false; }],
+        postRun: [],
+        print: (function() {
+          const element = document.getElementById('output');
+          if (element) element.value = '';
+          return function(text) {
+            if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+            console.log(text);
+            if (element) {
+              element.value += text + "\n";
+              element.scrollTop = element.scrollHeight;
+            }
+          };
+        })(),
+        printErr: function(text) {
+          if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+          console.error(text);
+        },
+        canvas: (function() {
+          return document.getElementById('canvas');
+        })(),
+        setStatus: function(text) {
+          if (!Module.setStatus.last) Module.setStatus.last = { time: Date.now(), text: '' };
+          if (text === Module.setStatus.last.text) return;
+          const m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+          const now = Date.now();
+          if (m && now - Module.setStatus.last.time < 30) return;
+          Module.setStatus.last.time = now;
+          Module.setStatus.last.text = text;
+          if (m) {
+            text = m[1];
+            progressElement.value = parseInt(m[2]) * 100;
+            progressElement.max = parseInt(m[4]) * 100;
+            progressElement.hidden = false;
+          } else {
+            progressElement.value = null;
+            progressElement.max = null;
+            progressElement.hidden = true;
+          }
+          statusElement.innerHTML = text;
+        },
+        totalDependencies: 0,
+        monitorRunDependencies: function(left) {
+          this.totalDependencies = Math.max(this.totalDependencies, left);
+          Module.setStatus(left
+            ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')'
+            : 'All downloads complete.');
+        }
+      };
+      Module.setStatus('Downloading ...');
+      window.onerror = function() {
+        Module.setStatus('Exception thrown, see JavaScript console');
+        Module.setStatus = function(text) {
+          if (text) Module.printErr('[post-exception status] ' + text);
+        };
+      };
+    </script>
+    {{{ SCRIPT }}}
+  </body>
+</html>

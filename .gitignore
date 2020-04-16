@@ -1,0 +1,8 @@
+/sdldoom-1.10/doom.wad
+Makefile
+*.o
+*.bc
+*.cache
+*.log
+*.status
+index.*
