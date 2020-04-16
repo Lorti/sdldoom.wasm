@@ -1,4 +1,4 @@
-// Emacs style mode select   -*- C++ -*- 
+// Emacs style mode select   -*- C++ -*-
 //-----------------------------------------------------------------------------
 //
 // $Id:$
@@ -28,7 +28,11 @@ rcsid[] = "$Id: i_unix.c,v 1.5 1997/02/03 22:45:10 b1 Exp $";
 
 #include "SDL_audio.h"
 #include "SDL_mutex.h"
+#ifdef __EMSCRIPTEN__
+#include "SDL_endian.h"
+#else
 #include "SDL_byteorder.h"
+#endif
 #include "SDL_version.h"
 
 #include "z_zone.h"
@@ -88,7 +92,7 @@ int 		channelhandles[NUM_CHANNELS];
 
 // SFX id of the playing sound effect.
 // Used to catch duplicates (like chainsaw).
-int		channelids[NUM_CHANNELS];			
+int		channelids[NUM_CHANNELS];
 
 // Pitch to stepping lookup, unused.
 int		steptable[256];
@@ -119,7 +123,7 @@ getsfx
     char                name[20];
     int                 sfxlump;
 
-    
+
     // Get the sound data from the WAD, allocate lump
     //  in zone memory.
     sprintf(name, "ds%s", sfxname);
@@ -138,7 +142,7 @@ getsfx
       sfxlump = W_GetNumForName("dspistol");
     else
       sfxlump = W_GetNumForName(name);
-    
+
     size = W_LumpLength( sfxlump );
 
     // Debug.
@@ -146,7 +150,7 @@ getsfx
     //fprintf( stderr, " -loading  %s (lump %d, %d bytes)\n",
     //	     sfxname, sfxlump, size );
     //fflush( stderr );
-    
+
     sfx = (unsigned char*)W_CacheLumpNum( sfxlump, PU_STATIC );
 
     // Pads the sound effect out to the mixing buffer size.
@@ -166,7 +170,7 @@ getsfx
 
     // Remove the cached lump.
     Z_Free( sfx );
-    
+
     // Preserve padded length.
     *len = paddedsize;
 
@@ -193,10 +197,10 @@ addsfx
   int		seperation )
 {
     static unsigned short	handlenums = 0;
- 
+
     int		i;
     int		rc = -1;
-    
+
     int		oldest = gametic;
     int		oldestnum = 0;
     int		slot;
@@ -283,15 +287,15 @@ addsfx
 	volume - ((volume*seperation*seperation) >> 16); ///(256*256);
     seperation = seperation - 257;
     rightvol =
-	volume - ((volume*seperation*seperation) >> 16);	
+	volume - ((volume*seperation*seperation) >> 16);
 
     // Sanity check, clamp volume.
     if (rightvol < 0 || rightvol > 127)
 	I_Error("rightvol out of bounds");
-    
+
     if (leftvol < 0 || leftvol > 127)
 	I_Error("leftvol out of bounds");
-    
+
     // Get the proper lookup table piece
     //  for this volume level???
     channelleftvol_lookup[slot] = &vol_lookup[leftvol*256];
@@ -322,12 +326,12 @@ void I_SetChannels()
 {
   // Init internal lookups (raw data, mixing buffer, channels).
   // This function sets up internal lookups used during
-  //  the mixing process. 
+  //  the mixing process.
   int		i;
   int		j;
-    
+
   int*	steptablemid = steptable + 128;
-  
+
   // Okay, reset internal mixing channels to zero.
   /*for (i=0; i<NUM_CHANNELS; i++)
   {
@@ -338,8 +342,8 @@ void I_SetChannels()
   // I fail to see that this is currently used.
   for (i=-128 ; i<128 ; i++)
     steptablemid[i] = (int)(pow(2.0, (i/64.0))*65536.0);
-  
-  
+
+
   // Generates volume lookup tables
   //  which also turn the unsigned samples
   //  into signed samples.
@@ -348,9 +352,9 @@ void I_SetChannels()
       vol_lookup[i*256+j] = (i*(j-128)*256)/127;
 //fprintf(stderr, "vol_lookup[%d*256+%d] = %d\n", i, j, vol_lookup[i*256+j]);
     }
-}	
+}
 
- 
+
 void I_SetSfxVolume(int volume)
 {
   // Identical to DOS.
@@ -405,17 +409,17 @@ I_StartSound
 
   // UNUSED
   priority = 0;
-  
+
     // Debug.
     //fprintf( stderr, "starting sound %d", id );
-    
+
     // Returns a handle (not used).
     SDL_LockAudio();
     id = addsfx( id, vol, steptable[pitch], sep );
     SDL_UnlockAudio();
 
     // fprintf( stderr, "/handle is %d\n", id );
-    
+
     return id;
 }
 
@@ -427,7 +431,7 @@ void I_StopSound (int handle)
   // Would be looping all channels,
   //  tracking down the handle,
   //  an setting the channel to zero.
-  
+
   // UNUSED.
   handle = 0;
 }
@@ -458,7 +462,7 @@ void I_UpdateSound(void *unused, Uint8 *stream, int len)
   register unsigned int	sample;
   register int		dl;
   register int		dr;
-  
+
   // Pointers in audio stream, left, right, end.
   signed short*		leftout;
   signed short*		rightout;
@@ -468,7 +472,7 @@ void I_UpdateSound(void *unused, Uint8 *stream, int len)
 
   // Mixing channel index.
   int				chan;
-    
+
     // Left and right channel
     //  are in audio stream, alternating.
     leftout = (signed short *)stream;
@@ -484,7 +488,7 @@ void I_UpdateSound(void *unused, Uint8 *stream, int len)
     //  that is 512 values for two channels.
     while (leftout != leftend)
     {
-	// Reset left/right value. 
+	// Reset left/right value.
 	dl = 0;
 	dr = 0;
 
@@ -496,7 +500,7 @@ void I_UpdateSound(void *unused, Uint8 *stream, int len)
 	    // Check channel, if active.
 	    if (channels[ chan ])
 	    {
-		// Get the raw data from the channel. 
+		// Get the raw data from the channel.
 		sample = *channels[ chan ];
 		// Add left and right part
 		//  for this channel (sound)
@@ -516,7 +520,7 @@ void I_UpdateSound(void *unused, Uint8 *stream, int len)
 		    channels[ chan ] = 0;
 	    }
 	}
-	
+
 	// Clamp to range. Left hardware channel.
 	// Has been char instead of short.
 	// if (dl > 127) *leftout = 127;
@@ -562,20 +566,20 @@ I_UpdateSoundParams
 
 
 void I_ShutdownSound(void)
-{    
+{
   SDL_CloseAudio();
 }
 
 
 void
 I_InitSound()
-{ 
+{
   SDL_AudioSpec wanted;
   int i;
-  
+
   // Secure and configure sound device first.
   fprintf( stderr, "I_InitSound: ");
-  
+
   // Open the audio device
   wanted.freq = SAMPLERATE;
   if ( SDL_BYTEORDER == SDL_BIG_ENDIAN ) {
@@ -593,18 +597,18 @@ I_InitSound()
   SAMPLECOUNT = wanted.samples;
   fprintf(stderr, " configured audio device with %d samples/slice\n", SAMPLECOUNT);
 
-    
+
   // Initialize external data (all sounds) at start, keep static.
   fprintf( stderr, "I_InitSound: ");
-  
+
   for (i=1 ; i<NUMSFX ; i++)
-  { 
+  {
     // Alias? Example is the chaingun sound linked to pistol.
     if (!S_sfx[i].link)
     {
       // Load data from WAD file.
       S_sfx[i].data = getsfx( S_sfx[i].name, &lengths[i] );
-    }	
+    }
     else
     {
       // Previously loaded already?
@@ -614,7 +618,7 @@ I_InitSound()
   }
 
   fprintf( stderr, " pre-cached all sound data\n");
-  
+
   // Finished initialization.
   fprintf(stderr, "I_InitSound: sound module ready\n");
   SDL_PauseAudio(0);
@@ -657,7 +661,7 @@ void I_StopSong(int handle)
 {
   // UNUSED.
   handle = 0;
-  
+
   looping = 0;
   musicdies = 0;
 }
@@ -672,7 +676,7 @@ int I_RegisterSong(void* data)
 {
   // UNUSED.
   data = NULL;
-  
+
   return 1;
 }
 
